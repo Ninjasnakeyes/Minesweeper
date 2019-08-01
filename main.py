@@ -12,8 +12,6 @@ Components/functions:
     -if size > certain value: shrink size
     -if size < beginner lv: tile size same but hud size doesn't change
 
-Plans:
--make wrapfield
 """
 
 import pygame
@@ -29,9 +27,38 @@ expert = (16, 31)
 
 size = 32
 hud = size * 2
+mode = ""
 
 # Puts screen in middle
 os.environ['SDL_VIDEO_CENTERED'] = '1'
+
+
+def knight_check(x, y, row, col, field):
+    check, r, c = [], len(field), len(field[1])
+    for i in row:
+        for j in col:
+            if i != x and j != y:
+                if i < x and j < y:
+                    if 0 <= i - 1 < r and 0 <= j < c and field[i - 1][j] != -1:
+                        check.append((i - 1, j))
+                    if 0 <= i < r and 0 <= j - 1 < c and field[i][j - 1] != -1:
+                        check.append((i, j - 1))
+                elif i < x and j > y:
+                    if 0 <= i - 1 < r and 0 <= j < c and field[i - 1][j] != -1:
+                        check.append((i - 1, j))
+                    if 0 <= i < r and 0 <= j + 1 < c and field[i][j + 1] != -1:
+                        check.append((i, j + 1))
+                elif i > x and j > y:
+                    if 0 <= i + 1 < r and 0 <= j < c and field[i + 1][j] != -1:
+                        check.append((i + 1, j))
+                    if 0 <= i < r and 0 <= j + 1 < c and field[i][j + 1] != -1:
+                        check.append((i, j + 1))
+                elif i > x and j < y:
+                    if 0 <= i + 1 < r and 0 <= j < c and field[i + 1][j] != -1:
+                        check.append((i + 1, j))
+                    if 0 <= i < r and 0 <= j - 1 < c and field[i][j - 1] != -1:
+                        check.append((i, j - 1))
+    return check
 
 
 class Tile(pygame.sprite.Sprite):
@@ -52,15 +79,25 @@ class Tile(pygame.sprite.Sprite):
     def zero(self, board):
         row_range = range(self.i - 1, self.i + 2)
         col_range = range(self.j - 1, self.j + 2)
+        if mode != 'knightsweeper':
+            for i in row_range:
+                for j in col_range:
+                    if 0 <= i < len(board) and 0 <= j < len(board[0]):
+                        if board[i][j].open is False and board[i][j].flag is False:
+                            self.image = pygame.image.load("images/open.jpg").convert_alpha()
+                            self.image = pygame.transform.scale(self.image, (self.s, self.s))
+                            board[i][j].open = True
+                            board[i][j].reveal(board)
+        elif mode == 'knightsweeper':
+            check = knight_check(self.i, self.j, row_range, col_range, board)
+            r, c = len(board), len(board[1])
 
-        for i in row_range:
-            for j in col_range:
-                if 0 <= i < len(board) and 0 <= j < len(board[0]):
-                    if board[i][j].open is False and board[i][j].flag is False:
-                        self.image = pygame.image.load("images/open.jpg").convert_alpha()
-                        self.image = pygame.transform.scale(self.image, (self.s, self.s))
-                        board[i][j].open = True
-                        board[i][j].reveal(board)
+            for i in check:
+                if 0 <= i[0] < r and 0 <= i[1] < c and board[i[0]][i[1]] != -1:
+                    self.image = pygame.image.load("images/open.jpg").convert_alpha()
+                    self.image = pygame.transform.scale(self.image, (self.s, self.s))
+                    board[i[0]][i[1]].open = True
+                    board[i[0]][i[1]].reveal(board)
         self.checked = True
 
     def reveal(self, board, z=False):
@@ -80,21 +117,35 @@ class Tile(pygame.sprite.Sprite):
                 self.zero(board)
 
     def num_open(self, board):
+        nflag = 0
         row_range = range(self.i - 1, self.i + 2)
         col_range = range(self.j - 1, self.j + 2)
-        nflag = 0
 
-        for i in row_range:
-            for j in col_range:
-                if 0 <= i < len(board) and 0 <= j < len(board[0]) and board[i][j].flag:
-                    nflag += 1
-
-        if nflag == self.value:
+        if mode != 'knightsweeper':
             for i in row_range:
                 for j in col_range:
-                    if 0 <= i < len(board) and 0 <= j < len(board[0]) and not board[i][j].flag:
-                        d = board[i][j].reveal(board)
-                        if d:
+                    if 0 <= i < len(board) and 0 <= j < len(board[0]) and board[i][j].flag:
+                        nflag += 1
+
+            if nflag == self.value:
+                for i in row_range:
+                    for j in col_range:
+                        if 0 <= i < len(board) and 0 <= j < len(board[0]) and not board[i][j].flag:
+                            if board[i][j].reveal(board):
+                                self.die = True
+
+        elif mode == 'knightsweeper':
+            check = knight_check(self.i, self.j, row_range, col_range, board)
+            r, c = len(board), len(board[1])
+
+            for i in check:
+                if 0 <= i[0] < r and 0 <= i[1] < c and board[i[0]][i[1]].flag:
+                    nflag += 1
+
+            if nflag == self.value:
+                for i in check:
+                    if 0 <= i[0] < r and 0 <= i[1] < c and not board[i[0]][i[1]].flag:
+                        if board[i[0]][i[1]].reveal(board):
                             self.die = True
 
     def toggle_flag(self):
@@ -174,7 +225,13 @@ class Hud(pygame.sprite.Sprite):
         elif self.value == "face":
             self.rect = pygame.Rect(0, 0, self.s, self.s)
             self.rect.center = (w/2 + self.s/2, hud/2)
-            self.image = pygame.image.load("images/happy.jpg").convert_alpha()
+            if mode == '':
+                self.image = pygame.image.load("images/happy.jpg").convert_alpha()
+            if mode == "wrapfield":
+                self.image = pygame.image.load("images/wrapface.jpg").convert_alpha()
+            if mode == "knightsweeper":
+                self.image = pygame.image.load("images/happy.jpg").convert_alpha()
+                self.image.fill((0, 0, 0))
             self.image = pygame.transform.scale(self.image, (self.s, self.s))
         elif self.value == "scores":
             self.rect = pygame.Rect(0, 0, self.s + self.s/2, self.s)
@@ -225,22 +282,36 @@ class Hud(pygame.sprite.Sprite):
                 self.image = pygame.transform.scale(self.image, (int(self.s / 2 + 2), self.s))
 
         elif self.value == "face":
-            if dead:
-                self.image = pygame.image.load("images/dead.jpg").convert_alpha()
-                self.image = pygame.transform.scale(self.image, (self.s, self.s))
-            elif win:
-                self.image = pygame.image.load("images/win.jpg").convert_alpha()
-                self.image = pygame.transform.scale(self.image, (self.s, self.s))
-            elif pygame.mouse.get_pressed() != (0, 0, 0):
-                self.image = pygame.image.load("images/scared.jpg").convert_alpha()
-                self.image = pygame.transform.scale(self.image, (self.s, self.s))
-            else:
-                self.image = pygame.image.load("images/happy.jpg").convert_alpha()
-                self.image = pygame.transform.scale(self.image, (self.s, self.s))
+            if mode == '':
+                if dead:
+                    self.image = pygame.image.load("images/dead.jpg").convert_alpha()
+                    self.image = pygame.transform.scale(self.image, (self.s, self.s))
+                elif win:
+                    self.image = pygame.image.load("images/win.jpg").convert_alpha()
+                    self.image = pygame.transform.scale(self.image, (self.s, self.s))
+                elif pygame.mouse.get_pressed() != (0, 0, 0):
+                    self.image = pygame.image.load("images/scared.jpg").convert_alpha()
+                    self.image = pygame.transform.scale(self.image, (self.s, self.s))
+                else:
+                    self.image = pygame.image.load("images/happy.jpg").convert_alpha()
+                    self.image = pygame.transform.scale(self.image, (self.s, self.s))
+            elif mode == 'wrapfield':
+                if dead:
+                    self.image.fill((0, 0, 0))
+                else:
+                    self.image = pygame.image.load("images/wrapface.jpg").convert_alpha()
+                    self.image = pygame.transform.scale(self.image, (self.s, self.s))
+            elif mode == 'knightsweeper':
+                if dead:
+                    self.image.fill((255, 0, 0))
+                else:
+                    self.image.fill((0, 0, 0))
 
             if self.mouse_on():
-                if click is 1:
-                    return True
+                if click == 1:
+                    return 'left'
+                elif click == 3:
+                    return 'right'
 
         elif self.value == "scores":
             if pygame.mouse.get_pressed() == (1, 0, 0) and self.mouse_on():
@@ -255,7 +326,8 @@ class Hud(pygame.sprite.Sprite):
 
 
 def gen_level(small, w, h, diff, num_mines, group, s, p, first_r=None, first_c=None, o_field=None):
-    row, col, = r, c = diff[0], diff[1]
+    row = r = diff[0]
+    col = c = diff[1]
     x = xcor = s / 2
     y = s * 2
 
@@ -288,10 +360,34 @@ def gen_level(small, w, h, diff, num_mines, group, s, p, first_r=None, first_c=N
             row_range = range(mine_x - 1, mine_x + 2)
             col_range = range(mine_y - 1, mine_y + 2)
 
-            for i in row_range:
-                for j in col_range:
-                    if 0 <= i < r and 0 <= j < c and field[i][j] != -1:
-                        field[i][j] += 1
+            if mode != 'knightsweeper':
+                for i in row_range:
+                    for j in col_range:
+                        if 0 <= i < r and 0 <= j < c and field[i][j] != -1:
+                            field[i][j] += 1
+                        if mode == 'wrapfield':
+                            wrap = False
+                            wi, wj = i, j
+                            if i < 0:
+                                wi = r - 1
+                                wrap = True
+                            elif i == r:
+                                wi = 0
+                                wrap = True
+                            if j < 0:
+                                wj = c - 1
+                                wrap = True
+                            elif j == c:
+                                wj = 0
+                                wrap = True
+                            if field[wi][wj] != -1 and wrap:
+                                field[wi][wj] += 1
+            elif mode == 'knightsweeper':
+                check = knight_check(mine_x, mine_y, row_range, col_range, field)
+
+                for i in check:
+                    if 0 <= i[0] < r and 0 <= i[1] < c and field[i[0]][i[1]] != -1:
+                        field[i[0]][i[1]] += 1
 
         field2 = [[0 for i in range(c)] for j in range(r)]
 
@@ -358,10 +454,34 @@ def gen_level(small, w, h, diff, num_mines, group, s, p, first_r=None, first_c=N
             row_range = range(mine_x - 1, mine_x + 2)
             col_range = range(mine_y - 1, mine_y + 2)
 
-            for i in row_range:
-                for j in col_range:
-                    if 0 <= i < r and 0 <= j < c and field[i][j] != -1 and field[i][j] <= 8:
-                        field[i][j] += 1
+            if mode != 'knightsweeper':
+                for i in row_range:
+                    for j in col_range:
+                        if 0 <= i < r and 0 <= j < c and field[i][j] != -1:
+                            field[i][j] += 1
+                        if mode == 'wrapfield':
+                            wrap = False
+                            wi, wj = i, j
+                            if i < 0:
+                                wi = r - 1
+                                wrap = True
+                            elif i == r:
+                                wi = 0
+                                wrap = True
+                            if j < 0:
+                                wj = c - 1
+                                wrap = True
+                            elif j == c:
+                                wj = 0
+                                wrap = True
+                            if field[wi][wj] != -1 and wrap:
+                                field[wi][wj] += 1
+            elif mode == 'knightsweeper':
+                check = knight_check(mine_x, mine_y, row_range, col_range, field)
+
+                for i in check:
+                    if 0 <= i[0] < r and 0 <= i[1] < c and field[i[0]][i[1]] != -1:
+                        field[i[0]][i[1]] += 1
 
         field2 = [[0 for i in range(c)] for j in range(r)]
 
@@ -441,7 +561,7 @@ def gen_border(r, c, s, w, sw, hud_height, border_group, hud_group):
         x = 0
 
     # Hud
-    face = Hud(None, sw, 0, s, "face", w)
+    face = Hud(None, sw, 0, s, "face", w, "")
     hud_group.add(face)
     scores = Hud(None, sw, 0, s, "scores", w, "tile")
     hud_group.add(scores)
@@ -510,7 +630,7 @@ def blit_box(screen, scale, pos):
 def main():
     # Init var
     pygame.init()
-    global beginner, intermediate, expert, size, hud
+    global beginner, intermediate, expert, size, hud, mode
 
     s_width = 288
     s_height = 288
@@ -524,7 +644,7 @@ def main():
     mines = 10
     score = None
     intro = True
-    play = ripple = False
+    play = ripple = face_click = False
 
     # Game loops
     while intro:
@@ -596,12 +716,14 @@ def main():
         start_time = pygame.time.get_ticks()
 
         xdisplays = (local_size/2 + 36 + w/2 + local_size)
-        text = Text(20, "Clear all tiles without mines to win", 0, 0, (0, 0, 0))
-        text.rect.center = (s_width/2, s_height + hud/4)
-        text1 = Text(17, '"q" = quit|"r" = restart|"t" = toggle ripple/instant reveal', 0, 0, (0, 0, 0))
-        text1.rect.center = (s_width/2, s_height + hud/2)
-        text2 = Text(20, "Press 1, 2, 3, or Enter to change size", 0, 0, (0, 0, 0))
-        text2.rect.center = (s_width/2, s_height + hud/2 + 15)
+        text = Text(22, "Clear all tiles without mines to win", 0, 0, (0, 0, 0))
+        text.rect.center = (s_width/2, s_height + hud/4 - 6)
+        text1 = Text(18, '"q" = quit|"r"/face button = restart|', 0, 0, (0, 0, 0))
+        text1.rect.center = (s_width/2, s_height + hud/2 - 6)
+        text2 = Text(18, '"t" = toggle ripple/instant reveal', 0, 0, (0, 0, 0))
+        text2.rect.center = (s_width/2, s_height + hud/2 + 9)
+        text3 = Text(18, '"1"/"2"/"3"/"Enter" = change size', 0, 0, (0, 0, 0))
+        text3.rect.center = (s_width/2, s_height + hud/2 + 23)
         button = Text(17, "Scores", 0, 0, (0, 0, 0))
         button.rect.center = (xdisplays/2 - 5, hud/2)
 
@@ -610,6 +732,13 @@ def main():
             p_in = open("scores.pickle", "rb")
             score = pickle.load(p_in)
             p_in.close()
+
+            if len(score) >= 6:
+                if score[3] == "wrapfield- " and score[4] == "wrapfield- " and score[5] == "wrapfield- " and face_click:
+                    mode = "wrapfield"
+                    face_click = False
+                else:
+                    face_click = False
 
         b_high, i_high, e_high, b_name, i_name, e_name = update_score(score)
 
@@ -627,19 +756,31 @@ def main():
             gen_border(row, col, local_size, w, s_width, hud, b_group, hud_group)
 
         while restart is False:
+            # In game setup
+            new_diff = None
             if woon == 3:
                 win = True
                 for t in tile_group:
                     if t.value != -1:
                         t.reveal(board)
-            new_diff = None
+            if chose == 0:
+                new_r = new_c = new_mines = ''
+
+            # Timer
             if not win and not dead:
                 if start is False:
                     start_time = pygame.time.get_ticks()
                 if start:
                     passed_time = int((pygame.time.get_ticks() - start_time)/1000)
-            if chose == 0:
-                new_r = new_c = new_mines = ''
+
+            # Mode
+            if not_flagged == diff[0] * diff[1] * -1 + mines:
+                if mode == '':
+                    mode = 'knightsweeper'
+                    restart = True
+                elif mode == 'knightsweeper':
+                    mode = ''
+                    restart = True
 
             # Input
             click = "type of click"
@@ -656,6 +797,11 @@ def main():
                         ripple = not ripple
                     elif event.key == pygame.K_SLASH and woon < 3 and not win:
                         woon += 1
+                    elif event.key == pygame.K_k:
+                        if mode != "knightsweeper":
+                            mode = "knightsweeper"
+                        else:
+                            mode = ''
                     elif event.key == pygame.K_1:
                         if fastest:
                             if len(name) <= 15:
@@ -954,8 +1100,11 @@ def main():
                 for h in hud_group:
                     if click != 'type of click' or not win or not dead:
                         if h.value == "face":
-                            if h.update(win, dead, click):
+                            if h.update(win, dead, click) == 'left':
                                 restart = True
+                                h.kill()
+                            elif h.update(win, dead, click) == 'right':
+                                face_click = restart = True
                                 h.kill()
                         elif h.value == "scores":
                             if h.update(win, dead, click):
@@ -970,6 +1119,7 @@ def main():
             screen.blit(text.image, text.rect)
             screen.blit(text1.image, text1.rect)
             screen.blit(text2.image, text2.rect)
+            screen.blit(text3.image, text3.rect)
 
             rippletext = "Instant"
             if ripple:
@@ -1118,7 +1268,7 @@ def main():
                 m3.rect.center = (s_width/2, s_height/2 + 35)
                 screen.blit(m3.image, m3.rect)
 
-            elif fastest:
+            elif fastest and mode == '':
                 d = diff
                 if diff == beginner:
                     d = "beginner"
@@ -1126,7 +1276,7 @@ def main():
                     d = "intermediate"
                 if diff == expert:
                     d = "expert"
-                n = Text(23, "You have the fastest time for" + d, 0, 0, (0, 0, 0))
+                n = Text(23, "You have the fastest time for " + d, 0, 0, (0, 0, 0))
                 n.rect.center = (s_width/2, s_height/2 - 10)
                 screen.blit(n.image, n.rect)
                 n2 = Text(23, "Please enter your name:", 0, 0, (0, 0, 0))

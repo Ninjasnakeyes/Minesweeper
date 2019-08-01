@@ -1,5 +1,6 @@
 """
 Components/functions:
+    -2 secret, extra game modes: wrapfield & knightsweeper
     -update only when mouse click
     -number clicks
     -open zeroes (updated: took out nested for loops, added ripple clear [will add toggle instant/ripple clear])

@@ -12,7 +12,6 @@ Components/functions:
     -customizable size/# of mines
     -if size > certain value: shrink size
     -if size < beginner lv: tile size same but hud size doesn't change
-
 """
 
 import pygame
@@ -229,7 +228,7 @@ class Hud(pygame.sprite.Sprite):
             if mode == '':
                 self.image = pygame.image.load("images/happy.jpg").convert_alpha()
             if mode == "wrapfield":
-                self.image = pygame.image.load("images/wrapface.jpg").convert_alpha()
+                self.image = pygame.image.load("images/redmine.jpg").convert_alpha()
             if mode == "knightsweeper":
                 self.image = pygame.image.load("images/happy.jpg").convert_alpha()
                 self.image.fill((0, 0, 0))
@@ -300,7 +299,7 @@ class Hud(pygame.sprite.Sprite):
                 if dead:
                     self.image.fill((0, 0, 0))
                 else:
-                    self.image = pygame.image.load("images/wrapface.jpg").convert_alpha()
+                    self.image = pygame.image.load("images/redmine.jpg").convert_alpha()
                     self.image = pygame.transform.scale(self.image, (self.s, self.s))
             elif mode == 'knightsweeper':
                 if dead:
@@ -587,31 +586,17 @@ def update_score(score):
     b_name = i_name = e_name = ""
     if type(score) is list and type(score) is list:
         if len(score[0]) != 0:
-            if min(score[0]) < 60:
-                b_high = str(min(score[0])) + " secs"
-            else:
-                b_high = str(int(min(score[0]) / 60)) + " mins " + str(int(min(score[0]) % 60)) + " secs"
-
+            b_name = score[3]
+            b_high = str(min(score[0])) + " secs"
+            
         if len(score[1]) != 0:
             i_name = score[4]
-            if min(score[1]) < 60:
-                i_high = str(min(score[1])) + " secs"
-            else:
-                i_high = str(int(min(score[1]) / 60)) + " mins " + str(int(min(score[1]) % 60)) + " secs"
-
+            i_high = str(min(score[1])) + " secs"
+            
         if len(score[2]) != 0:
             e_name = score[5]
-            if min(score[2]) < 60:
-                e_high = str(min(score[2])) + " secs"
-            else:
-                e_high = str(int(min(score[2]) / 60)) + " mins " + str(min(score[2]) % 60) + " secs"
-        if len(score[3]) != 0:
-            b_name = score[3]
-        if len(score[4]) != 0:
-            i_name = score[4]
-        if len(score[5]) != 0:
-            e_name = score[5]
-
+            e_high = str(min(score[2])) + " secs"
+            
     return b_high, i_high, e_high, b_name, i_name, e_name
 
 
@@ -782,6 +767,8 @@ def main():
                 elif mode == 'knightsweeper':
                     mode = ''
                     restart = True
+                elif mode == 'wrapfield':
+                    print('hi')
 
             # Input
             click = "type of click"
@@ -798,9 +785,11 @@ def main():
                         ripple = not ripple
                     elif event.key == pygame.K_SLASH and woon < 3 and not win:
                         woon += 1
-                    elif event.key == pygame.K_k:
-                        if mode != "knightsweeper":
+                    elif chose == 0 and event.key == pygame.K_k:
+                        if mode == "":
                             mode = "knightsweeper"
+                        elif mode == "knightsweeper":
+                            mode = "wrapfield"
                         else:
                             mode = ''
                     elif event.key == pygame.K_1:
@@ -1226,7 +1215,7 @@ def main():
                 beginner_score = Text(font, "Beginner Best: " + b_name + b_high, 0, 0, (0, 0, 0))
                 beginner_score.rect.center = (s_width/2, s_height/2 - 20)
                 screen.blit(beginner_score.image, beginner_score.rect)
-                intermediate_score = Text(font, "Intermediate Best: " + i_name + i_high, 0, 0, (0, 0, 0))
+                intermediate_score = Text(font, "Medium Best: " + i_name + i_high, 0, 0, (0, 0, 0))
                 intermediate_score.rect.center = (s_width/2, s_height/2)
                 screen.blit(intermediate_score.image, intermediate_score.rect)
                 expert_score = Text(font, "Expert Best: " + e_name + e_high, 0, 0, (0, 0, 0))

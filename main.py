@@ -1,6 +1,9 @@
 """
 Components/functions:
     -2 secret, extra game modes: wrapfield & knightsweeper
+        -Access wrapfield by getting new highscores on all 3 preset difficulties and enter name as 'wrapfield'
+        -Exit wrapfield by clearing highscores
+        -Toggle knightsweeper by flagging all tiles on screen
     -update only when mouse click
     -number clicks
     -open zeroes (updated: took out nested for loops, added ripple clear [will add toggle instant/ripple clear])
@@ -12,6 +15,11 @@ Components/functions:
     -customizable size/# of mines
     -if size > certain value: shrink size
     -if size < beginner lv: tile size same but hud size doesn't change
+    
+To Do:
+    -Add clear highscores button to scores screen
+    -Add sprites for face button in different game modes
+    -Implement combination of both game modes
 """
 
 import pygame
